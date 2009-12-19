@@ -2,8 +2,6 @@
 #~ Imports 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-from taskPaperParser import TaskPaperParserBase
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ Definitions 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,7 +54,7 @@ class TaskProject(TaskTextAtom):
 
     def init(self):
         self.children = []
-    def add(self, item):
+    def append(self, item):
         self.children.append(item)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -69,7 +67,7 @@ class TaskItem(TaskTextAtom):
 
     def init(self):
         self.children = []
-    def add(self, item):
+    def append(self, item):
         self.children.append(item)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -102,60 +100,4 @@ class TaskTag(TaskAtom):
     def isTag(self): return True
     def accept(self, v, *args, **kw): 
         return v.visitTaskTag(self, *args, **kw)
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~ Builder
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-class TaskPaperBuilder(TaskPaperParserBase):
-    factoryMap = {
-        'project': TaskProject,
-        'task': TaskItem,
-        'note': TaskNote,
-        'tag': TaskTag, }
-
-    def _buildItem(self, kind, info):
-        self._buildTags(info)
-        item = self.factoryMap[kind](info)
-        return item.indent, item
-
-    def _buildTags(self, info):
-        tags = info.get('tags')
-        if tags:
-            FMap = self.factoryMap
-            tags[:] = [FMap[k](t) for k,t in tags]
-        return tags
-
-    def _assignParent(self, item, parent, roots):
-        if parent is None:
-            roots.append(item)
-        else: parent.add(item)
-    
-class FlatTaskPaperBuilder(TaskPaperBuilder):
-    def _buildItem(self, info):
-        self._buildTags(info)
-        item = self.factoryMap[kind](kind, info)
-        return 0, item
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~ Main 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-if __name__=='__main__':
-    import sys
-    from pprint import pprint
-
-    def printTreeList(r, level=0, I='  '):
-        for e in r:
-            if e.tags:
-                print '%s%r %r' % (I*level, e, e.tags)
-            else: print '%s%r' % (I*level, e)
-            if e.children:
-                printTreeList(e.children, level+1, I)
-
-    for fn in sys.argv[1:]:
-        builder = TaskPaperBuilder()
-        #builder = FlatTaskPaperBuilder()
-        r = builder.read(open(fn, "rb"))
-        printTreeList(r)
 

@@ -32,6 +32,8 @@ def structureEntry(*args):
 textContent = ('text', r'\S.*')
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~ Scanner
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class TaskPaperScanner(object):
     structure = [
@@ -90,6 +92,8 @@ class TaskPaperScanner(object):
         return ('tag', info)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~ Parser
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class TaskPaperParserBase(object):
     TaskPaperScanner = TaskPaperScanner
@@ -99,8 +103,6 @@ class TaskPaperParserBase(object):
 
     def reset(self):
         self._roots = []
-        self._projects = []
-        self._tasks = []
 
     def read(self, file, reset=True):
         if reset:
@@ -116,7 +118,7 @@ class TaskPaperParserBase(object):
             roots = self._roots
         for kind, info in self.scanner(line):
             level, item = self._buildItem(kind, info)
-            parent = self._findParent(level, item, kind)
+            parent = self._findParent(level, kind, item, roots)
             self._assignParent(item, parent, roots)
         return roots
 
@@ -124,8 +126,27 @@ class TaskPaperParserBase(object):
         raise NotImplementedError('Subclass Responsibility: %r' % (self,))
     def _assignParent(self, item, parent, roots):
         raise NotImplementedError('Subclass Responsibility: %r' % (self,))
+    def _findParent(self, level, kind, item, roots):
+        raise NotImplementedError('Subclass Responsibility: %r' % (self,))
 
-    def _findParent(self, level, item, kind):
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~ Mixins
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class FlatTaskPaperMixin(object):
+    def _findParent(self, level, kind, item, roots):
+        if roots and kind != 'project':
+            return roots[-1]
+        else: return None
+
+class NestedTaskPaperMixin(object):
+    def reset(self):
+        self._projects = []
+        self._tasks = []
+        super(NestedTaskPaperMixin, self).reset()
+
+    def _findParent(self, level, kind, item, roots):
         entry = (level, item)
 
         projects = self._projects; tasks = self._tasks
@@ -165,8 +186,10 @@ class TaskPaperParserBase(object):
             return parent[1]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~ SExpression Tools
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-class TaskPaperParser(TaskPaperParserBase): 
+class TaskPaperSExpressionBase(TaskPaperParserBase): 
     def _buildItem(self, kind, info):
         level = len(info.pop('indent', ''))
         if kind != 'note':
@@ -180,6 +203,11 @@ class TaskPaperParser(TaskPaperParserBase):
         else: 
             parent[-1].append(item)
 
+class FlatTaskPaperSExpressions(FlatTaskPaperMixin, TaskPaperSExpressionBase):
+    pass
+class TaskPaperSExpressions(NestedTaskPaperMixin, TaskPaperSExpressionBase):
+    pass
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ Main 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -189,23 +217,25 @@ if __name__=='__main__':
     from pprint import pprint
 
     def testScanner(fn):
-        scan = TaskPaperScanner()
+        scanner = TaskPaperScanner()
         for line in open(fn, "rb"):
-            r = scan(line)[0]
-            for k, text, info, tags in r:
-                print '%s: %s' % (k, text)
-                for tag, name, arg in tags:
+            r = scanner(line)
+            for k, info in r:
+                print '%s: %s' % (k, info.get('text'))
+                tags = info.get('tags', [])
+                for kind, tinfo in tags:
+                    tag = tinfo['tag']; arg = tinfo.get('arg')
                     if arg:
-                        print '  @%s(%s)' % (name,arg)
-                    else:
-                        print '  @%s' % (name,)
+                        print '  @%s(%s)' % (tag, arg)
+                    else: print '  @%s' % (tag,)
                 if tags: print
     
     def testParser(fn):
-        builder = TaskPaperParser()
+        builder = TaskPaperSExpressions()
         r = builder.read(open(fn, "rb"))
         pprint(r)
 
     for fn in sys.argv[1:]:
-        testParser(fn)
+        #testParser(fn)
+        testScanner(fn)
 
