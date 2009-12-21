@@ -186,29 +186,6 @@ class NestedTaskPaperMixin(object):
             return parent[1]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~ SExpression Tools
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-class TaskPaperSExpressionBase(TaskPaperParserBase): 
-    def _buildItem(self, kind, info):
-        level = len(info.pop('indent', ''))
-        if kind != 'note':
-            item = (kind, info, [])
-        else: item = (kind, info)
-        return level, item
-
-    def _assignParent(self, item, parent, roots):
-        if parent is None:
-            roots.append(item)
-        else: 
-            parent[-1].append(item)
-
-class FlatTaskPaperSExpressions(FlatTaskPaperMixin, TaskPaperSExpressionBase):
-    pass
-class TaskPaperSExpressions(NestedTaskPaperMixin, TaskPaperSExpressionBase):
-    pass
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ Main 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -216,7 +193,7 @@ if __name__=='__main__':
     import os, sys
     from pprint import pprint
 
-    def testScanner(fn):
+    for fn in sys.argv[1:]:
         scanner = TaskPaperScanner()
         for line in open(fn, "rb"):
             r = scanner(line)
@@ -229,13 +206,4 @@ if __name__=='__main__':
                         print '  @%s(%s)' % (tag, arg)
                     else: print '  @%s' % (tag,)
                 if tags: print
-    
-    def testParser(fn):
-        builder = TaskPaperSExpressions()
-        r = builder.read(open(fn, "rb"))
-        pprint(r)
-
-    for fn in sys.argv[1:]:
-        #testParser(fn)
-        testScanner(fn)
 
