@@ -31,6 +31,8 @@ def structureEntry(*args):
     return [('indent', r'\s*')] + list(args)
 textContent = ('text', r'\S.*')
 
+tagIdent = ('tag', r'(:?[-.:]?[\w#?!]+)+')
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ Scanner
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,9 +45,12 @@ class TaskPaperScanner(object):
         ]
         
     tag = [
-        ('tagEx',   [r'@', ('tag', r'\w+'), r'\(', ('arg', r'[^()]*'), r'\)']),
-        ('tag',     [r'@', ('tag', r'\w+'), r'']),
-        (None, r'([^@]*(@\W)?)*')]
+        (None,      r'\s+'), # whitespace
+        (None,      r'[^@]+'),                      # anything but tags
+        ('tagEx',   [r'@', tagIdent, r'\(', ('arg', r'[^()]*'), r'\)']),
+        ('tag',     [r'@', tagIdent, r'']), # parameterless tag
+        (None,      r'@(?!%s)' % (tagIdent[-1],))   # exclude non-tags
+        ]
 
     def __init__(self):
         self.scanPaper = self.compileScanner(self.structure)
